@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 
 # TODO: update all docstrings
-# TODO: move all imports to top level
-
 """
 Contains methods that define the model with raw data
 """
 import yaml
+
+from IPython.display import display
+import numpy as np
 import pandas as pd
+from sklearn.metrics import confusion_matrix
 import tensorflow as tf
 import tensorflow.keras as K
 from tensorflow.keras.layers import (
@@ -21,6 +23,7 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
+
 import utils.helper as h
 
 # TODO: specify encoding
@@ -405,7 +408,6 @@ class TestModel:
 
         # report confusion matrix
         confmat = self.build_confmat()
-        from IPython.display import display
 
         display(confmat)
 
@@ -435,7 +437,6 @@ class TestModel:
         Returns:
           a 1-d array of class predictions, unknown classes are returned as class 6
         """
-        import numpy as np
 
         probs_ls = np.amax(self.y_pred, axis=1)
         class_ls = np.argmax(self.y_pred, axis=1)
@@ -463,8 +464,6 @@ class TestModel:
         print("y_dec_pred=", self.y_dec_pred, "\n\n\ny_label=", self.y_test)
 
         mat_labels = range(max([max(self.y_test), int(max(self.y_dec_pred))]) + 1)
-
-        from sklearn.metrics import confusion_matrix
 
         return pd.DataFrame(
             confusion_matrix(self.y_test, self.y_dec_pred, labels=mat_labels),
