@@ -1,4 +1,5 @@
 cnn_raw: 
+  is_raw: True
   # default paths and filenames
   data_path: 'Data/Raw Data/Single/'
   fout_path: 'Data/Model Data/Raw CNN/'

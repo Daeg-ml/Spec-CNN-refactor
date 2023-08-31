@@ -276,7 +276,7 @@ class CnnModel:
         X = Dense(d_units, use_bias=False, name="dense4")(X)
         X = BatchNormalization(name="bn4")(X)
         X = Activation(act_4, name=act_4 + "4")(X)
-        X = Dropout(self.drop, name="dropout4")(X)
+        X = Dropout(self.drop_rate, name="dropout4")(X)
 
         # layer 5 - fully connected layer 2 dense, batch normalization, softmax output
         X = Dense(y_shape, use_bias=False, name="dense5")(X)
@@ -373,6 +373,7 @@ class TestModel:
 
         self.y_pred = self.run_pred()
         self.y_dec_pred = self.dec_pred()
+        self.test_cnn_model(False)
 
     def run_pred(self, batch_size=None):
         if batch_size:
