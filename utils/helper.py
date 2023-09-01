@@ -2,7 +2,7 @@
 """
 Contains functions for managing, shaping, and modifying data or analysis
 """
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 import numpy as np
 import pandas as pd
 
@@ -91,7 +91,7 @@ def dfbuilder(
         df = df_ls[0]
 
     if not df[df.isna().any(axis=1)].empty:
-        raise ValValueError("the dataframe includes NaN values")
+        raise ValueError("the dataframe includes NaN values")
 
     # if peaks data, additional cleaning
     if "Peaks Only" in fin_path:
@@ -161,7 +161,7 @@ def raw_processing(df_ls, fname_ls, fin_path):
     return df_ls
 
 
-def splitdata(df, dev_size=0.2, r_state=1):
+def splitdata(df, dev_size=0.2, r_state=1) -> List[Union[pd.DataFrame, pd.Series]]:
     """splits X values from y values and returns tuple of DataFrames from sklearn
     train_test_split
 
