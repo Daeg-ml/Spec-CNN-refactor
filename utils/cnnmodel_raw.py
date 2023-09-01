@@ -58,24 +58,16 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self):
         train = self.path + self.train
         self.model: K.models.Model
-        try:
-            pd.DataFrame(
-                data=self.model.predict(self.train_data), index=self.y_train.index
-            ).to_csv(train, mode="a")
-        except:
-            pd.DataFrame(
-                data=self.model.predict(self.train_data), index=self.y_train.index
-            ).to_csv(train, mode="w")
+
+        pd.DataFrame(
+            data=self.model.predict(self.train_data), index=self.y_train.index
+        ).to_csv(train, mode="a")
 
         val = self.path + self.val
-        try:
-            pd.DataFrame(
-                data=self.model.predict(self.validation_data), index=self.y_dev.index
-            ).to_csv(val, mode="a")
-        except:
-            pd.DataFrame(
-                data=self.model.predict(self.validation_data), index=self.y_dev.index
-            ).to_csv(val, mode="w")
+
+        pd.DataFrame(
+            data=self.model.predict(self.validation_data), index=self.y_dev.index
+        ).to_csv(val, mode="a")
 
 
 class CnnModel:
@@ -115,7 +107,7 @@ class CnnModel:
         self.lrlu_alpha = config[self.mod_sel]["lrlu_alpha"]
         self.metrics = [config[self.mod_sel]["metrics"]]
         self.threshold = config[self.mod_sel]["test_threshold"]
-        self.dev_size = config[self.dev_size]["dev_size"]
+        self.dev_size = config[self.mod_sel]["dev_size"]
 
         self.data_path = data_path if data_path else config[self.mod_sel]["data_path"]
         self.fout_path = config[self.mod_sel]["fout_path"]
