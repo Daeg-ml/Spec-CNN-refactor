@@ -36,6 +36,8 @@ cnn_raw:
   # metrics
   metrics: 'sparse_categorical_accuracy'
   # testing
+  dev_size: 0.2
+  r_state: 1
   test_batch: 1
   test_threshold: 0.98
 
