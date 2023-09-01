@@ -45,7 +45,7 @@ def peakscleaning(df):
 
 def dfbuilder(
     fin_path, split_df=True, dev_size=0.2, r_state=1, raw=False
-) -> Union[pd.DataFrame, Tuple[pd.DataFrame, ...]]:
+) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]]:
     """Imports data from all CSV files in 'fname_ls' found at location 'fin_path'
     and returns in one large dataframe or a split of data for training
 
