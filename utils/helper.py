@@ -27,7 +27,7 @@ def fnamelsbuilder(fin_path):
     return [f for f in listdir(fin_path) if isfile(join(fin_path, f))]
 
 
-def peakscleaning(df):
+def peakscleaning(df) -> pd.DataFrame:
     """Cleaning for peaks data - drop any rows containing NA
 
     Args:
@@ -45,7 +45,7 @@ def peakscleaning(df):
 
 def dfbuilder(
     fin_path, split_df=True, dev_size=0.2, r_state=1, raw=False
-) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]]:
+) -> Union[pd.DataFrame, Tuple[pd.DataFrame, ...]]:
     """Imports data from all CSV files in 'fname_ls' found at location 'fin_path'
     and returns in one large dataframe or a split of data for training
 
@@ -102,10 +102,11 @@ def dfbuilder(
         return splitdata(df, dev_size, r_state)
 
     # split data for processing
+    assert isinstance(df, pd.DataFrame)
     return df
 
 
-def raw_processing(df_ls, fname_ls, fin_path):
+def raw_processing(df_ls, fname_ls, fin_path) -> List[pd.DataFrame]:
     """imports and standardizes raw data to one intensity value per wave number
     between wave number 150 and 1100. Designed for use by the dfbuilder method
 
@@ -161,7 +162,7 @@ def raw_processing(df_ls, fname_ls, fin_path):
     return df_ls
 
 
-def splitdata(df, dev_size=0.2, r_state=1) -> List[Union[pd.DataFrame, pd.Series]]:
+def splitdata(df: pd.DataFrame, dev_size=0.2, r_state=1) -> Tuple[pd.DataFrame, ...]:
     """splits X values from y values and returns tuple of DataFrames from sklearn
     train_test_split
 
@@ -181,7 +182,15 @@ def splitdata(df, dev_size=0.2, r_state=1) -> List[Union[pd.DataFrame, pd.Series
     # split into train and dev sets
     from sklearn.model_selection import train_test_split
 
-    return train_test_split(X, y, test_size=dev_size, random_state=r_state)
+    X_train, X_dev, y_train, y_dev = train_test_split(
+        X, y, test_size=dev_size, random_state=r_state
+    )
+    assert isinstance(X_train, pd.DataFrame)
+    assert isinstance(X_dev, pd.DataFrame)
+    assert isinstance(y_train, pd.DataFrame)
+    assert isinstance(y_dev, pd.DataFrame)
+
+    return X_train, X_dev, y_train, y_dev
 
 
 def plot_roc(X_df, i):

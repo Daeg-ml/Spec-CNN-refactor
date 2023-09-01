@@ -26,8 +26,7 @@ from tensorflow.keras.models import Model
 
 import utils.helper as h
 
-# TODO: specify encoding
-with open("utils/config.yml") as file:
+with open("utils/config.yml", encoding="utf-8") as file:
     config = yaml.safe_load(file)
 
 
@@ -36,9 +35,15 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     Callback to output list of predictions of all training and dev data to a file after each epoch
     """
 
-    # TODO: add typehints for intialized values
     def __init__(
-        self, train_data, validation_data, y_train, y_dev, train, val, fout_path
+        self,
+        train_data: pd.DataFrame,
+        validation_data: pd.DataFrame,
+        y_train: pd.DataFrame,
+        y_dev: pd.DataFrame,
+        train: str,
+        val: str,
+        fout_path: str,
     ):
         super().__init__()
         self.validation_data = validation_data
@@ -52,6 +57,7 @@ class PredictionCallback(tf.keras.callbacks.Callback):
     # TODO: should not be done with try/except, do proper check
     def on_epoch_end(self):
         train = self.path + self.train
+        self.model: K.models.Model
         try:
             pd.DataFrame(
                 data=self.model.predict(self.train_data), index=self.y_train.index
@@ -80,8 +86,8 @@ class CnnModel:
 
     def __init__(
         self,
-        mod_sel,
-        data_path=None,
+        mod_sel: str,
+        data_path,
         id_val="0_",
         fast=True,
         dev_size=None,
@@ -167,6 +173,11 @@ class CnnModel:
         patience = config[self.mod_sel]["patience"]
 
         # determine the appropriate callbacks, depending on if fast is true or false
+        assert isinstance(self.X_train, pd.DataFrame)
+        assert isinstance(self.X_dev, pd.DataFrame)
+        assert isinstance(self.y_train, pd.DataFrame)
+        assert isinstance(self.y_dev, pd.DataFrame)
+
         if not self.fast:
             callbacks = [
                 PredictionCallback(
@@ -190,7 +201,6 @@ class CnnModel:
             ]
 
         # call build_cnn and train model, output trained model
-        # TODO: typehint outputs from dfbuilder
         cnn_model = self.build_cnn(self.X_train.shape, self.y_train.max() + 1)
 
         cnn_hist = cnn_model.fit(
@@ -202,7 +212,7 @@ class CnnModel:
             callbacks=callbacks,
         )
 
-        return cnn_model, cnn_hist
+        return cnn_model
 
     # TODO: update method name and references
     # TODO: conform parameter names to snake casing except when represents a matrix
@@ -323,9 +333,7 @@ class CnnModel:
         """
 
         # train a cnn model
-        # TODO: typehint outputs from train_cnn_model
-        self.model, cnn_hist = self.train_cnn_model()
-        pd.DataFrame(cnn_hist.history).to_csv(self.fout_path + self.id_val + "hist.csv")
+        self.model = self.train_cnn_model()
 
         # test cnn model with dev set
         self.test = TestModel(
@@ -342,8 +350,6 @@ class CnnModel:
         # save model
         if not self.fast:
             self.save_model()
-
-        return cnn_hist
 
     def save_model(self):
         """saves model data to the given output mout_path
