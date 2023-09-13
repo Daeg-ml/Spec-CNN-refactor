@@ -45,7 +45,7 @@ def peakscleaning(df) -> pd.DataFrame:
 
 def dfbuilder(
     fin_path, split_df=True, dev_size=0.2, r_state=1, raw=False
-) -> Union[pd.DataFrame, Tuple[pd.DataFrame, ...]]:
+) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]]:
     """Imports data from all CSV files in 'fname_ls' found at location 'fin_path'
     and returns in one large dataframe or a split of data for training
 
@@ -162,7 +162,9 @@ def raw_processing(df_ls, fname_ls, fin_path) -> List[pd.DataFrame]:
     return df_ls
 
 
-def splitdata(df: pd.DataFrame, dev_size=0.2, r_state=1) -> Tuple[pd.DataFrame, ...]:
+def splitdata(
+    df: pd.DataFrame, dev_size=0.2, r_state=1
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """splits X values from y values and returns tuple of DataFrames from sklearn
     train_test_split
 
@@ -187,90 +189,7 @@ def splitdata(df: pd.DataFrame, dev_size=0.2, r_state=1) -> Tuple[pd.DataFrame, 
     )
     assert isinstance(X_train, pd.DataFrame)
     assert isinstance(X_dev, pd.DataFrame)
-    assert isinstance(y_train, pd.DataFrame)
-    assert isinstance(y_dev, pd.DataFrame)
+    assert isinstance(y_train, pd.Series)
+    assert isinstance(y_dev, pd.Series)
 
     return X_train, X_dev, y_train, y_dev
-
-
-def plot_roc(X_df, i):
-    """plots the receiver operating characteristic curve for the data in X_df with
-    true binary labels in the final column
-
-    Args:
-      X_df: DataFrame with the target class probability in the column ['i']
-      i: target integer label, eg use 0 to get an ROC curve for Quartz
-
-    Returns:
-      a tuple of arrays, the arrays of tpr, fpr, and threshold values
-
-    Notes:
-      The Reciever Operator Characteristic (ROC) curve is built by plotting x,y at
-      various binary discrimination thresholds where x=true positive rate(tpr) and
-      y=false positive rate(fpr)
-
-      tpr=True positive/(True Positive + False Negative)
-      fpr=False positive/(False Positive + True Negative)
-    """
-    # get tpr, fpr, and threshold lists
-    try:
-        from sklearn.metrics import roc_curve
-
-        fpr_p, tpr_p, thresh = roc_curve(X_df["label"], X_df[i], i)
-    except:
-        return None
-
-    # plot the roc curves
-    from matplotlib import pyplot as plt
-
-    plt.plot(fpr_p, tpr_p)
-    plt.plot([0, 1], [0, 1], color="green")
-    plt.title("ROC Curve for Class " + str(i))
-    plt.show()
-
-    return tpr_p, fpr_p, thresh
-
-
-def roc_all(outputs, labels):
-    """creates ROC curves for each class in the output of a classifier
-
-    Args:
-      outputs: DataFrame or ndarray of output probabilities for each class
-      labels: an array or series of true labels for the samples in X
-
-    Returns:
-      None
-    """
-    master_df = pd.DataFrame(outputs)
-    roc_d = {}
-    master_df["label"] = labels.values
-    for i in range(labels.max() + 1):
-        if len(master_df.loc[master_df["label"] == i]) == 0:
-            continue
-        roc_d[i] = plot_roc(master_df, i)
-
-    return pd.DataFrame(roc_d, index=["tpr", "fpr", "thresh"])
-
-
-def dec_pred(y_pred, threshold=0.95):
-    """takes prediction weights and applies a decision threshold to deterime the
-    predicted class for each sample
-
-    Args:
-      y_pred: an ndarray of prediction weights for a set of samples
-      threshold: the determination threshold at which the model makes a prediction
-
-    Returns:
-      a 1-d array of class predictions, unknown classes are returned as class 6
-    """
-    import numpy as np
-
-    probs_ls = np.amax(y_pred, axis=1)
-    class_ls = np.argmax(y_pred, axis=1)
-    pred_lab = np.zeros(len(y_pred))
-    for i in range(len(probs_ls)):
-        if probs_ls[i] > threshold:
-            pred_lab[i] = class_ls[i]
-        else:
-            pred_lab[i] = 15
-    return pred_lab
