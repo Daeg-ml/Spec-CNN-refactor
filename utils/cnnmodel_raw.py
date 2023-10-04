@@ -2,7 +2,7 @@
 
 # TODO: update all docstrings
 """
-Contains methods that define the model with raw data
+Contains methods that define the CNN model
 """
 import yaml
 
@@ -32,15 +32,16 @@ with open("utils/config.yml", encoding="utf-8") as file:
 
 class PredictionCallback(tf.keras.callbacks.Callback):
     """
-    Callback to output list of predictions of all training and dev data to a file after each epoch
+    Callback to output list of predictions of all training and dev data to a
+        file after each epoch
     """
 
     def __init__(
         self,
         train_data: pd.DataFrame,
         validation_data: pd.DataFrame,
-        y_train: pd.DataFrame,
-        y_dev: pd.DataFrame,
+        y_train: pd.Series,
+        y_dev: pd.Series,
         train: str,
         val: str,
         fout_path: str,
@@ -54,8 +55,11 @@ class PredictionCallback(tf.keras.callbacks.Callback):
         self.val = val
         self.path = fout_path
 
-    # TODO: should not be done with try/except, do proper check
-    def on_epoch_end(self):
+    def on_epoch_end(self, epoch, logs={}):
+        """
+        Callback method to generate logs on epoch end
+        """
+
         train = self.path + self.train
         self.model: K.models.Model
 
@@ -73,7 +77,36 @@ class PredictionCallback(tf.keras.callbacks.Callback):
 class CnnModel:
     """
     Manages CNN model, on initialization the appropriate configurations are
-    selected depending on the model chosen
+        selected depending on the mod_sel chosen
+
+    Attributes:
+        mod_sel: string identifying which model to build; determines default
+            hyperparameters, filepaths, and structure. Options: 'cnn_raw'
+        id_val: string prepended to output file names
+        fast: bool skips custom callback and saving a history file if true.
+            Default true
+        lr: float learning rate
+        batch_size: int batch size
+        drop_rate: float dropout rate
+        epochs: int number of epochs
+        lrlu_alpha: float alpha rate for leaky relu
+        metrics: list[string,...] of metrics to track during training
+        threshold: float decision threshold for positive identification
+        data_path: string
+        fout_path: string
+        r_state: int
+        dev_size: float between 0.0 and 1.0, determines the proportion of
+            the data set to be separated for the dev set. Default 0.2
+        X_train: DataFrame or ndarray of training set input features
+        y_train: DataFrame or Series of labels for the X_train samples, must be in
+            the same order as X_train samples
+        X_dev: DataFrame or ndarray of dev set input features
+        y_dev: DataFrame or Series of labels for the X_dev samples, must be in the
+            same order as the X_dev samples
+        model: keras model object. Not instantiated until self.train_cnn_model
+            is called
+        test: testmodel class object. Not instantiated until self.cnn_model
+            is called
     """
 
     def __init__(
@@ -87,8 +120,16 @@ class CnnModel:
     ):
         """
         Args:
-          mod_sel: string defining which model to build; determines default
-           hyperparameters, filepaths, and structure. Options: 'cnn_raw'
+            mod_sel: string identifying which model to build; determines default
+                hyperparameters, filepaths, and structure. Options: 'cnn_raw'
+            data_path: string source path for input data
+            id_val: string prepended to output files
+            fast: bool skips custom callback and saving a history file if true.
+                Default true
+            dev_size: float between 0.0 and 1.0, determines the proportion of
+                the data set to be separated for the dev set. Default 0.2
+            hyperparameters: dict containing hyperparameters. Valid keys
+                include lr, batch_size, drop_rate, epochs
         """
         self.mod_sel = mod_sel
 
@@ -130,24 +171,13 @@ class CnnModel:
         Trains a CNN model using the predetermined architecture and returns the model
 
         Args:
-          X_train: DataFrame or ndarray of training set input features
-          y_train: DataFrame or Series of labels for the X_train samples, must be in
-            the same order as X_train samples
-          X_dev: DataFrame or ndarray of dev set input features
-          y_dev: DataFrame or Series of labels for the X_dev samples, must be in the
-            same order as the X_train samples
-          hyperparameters: an array of hyperparameters in the order: learning
-            rate (lr) (default 0.0001), batch size (default 100), dropout rate (drop))
-            (default 0.55), epochs (default 10)
-          fast: boolean. if true, then the model runs more than twice as fast but does
-            not record predictions of every sample for every epoch. If False, runs
-            much more slowly but creates a csv of probability weights for every sample
-            at every epoch for both the training and validation sets
-          id_val: string that is prepended to all output files for tracking
+            hyperparameters: dict of hyperparameters. Valid keys include: 'lr'
+                (learning rate) (default 0.0001), 'batch_size' (batch size)
+                (default 100), 'drop_rate' (dropout rate) (default 0.55),
+                'epochs' (number of epochs to train) (default 10)
 
         Returns:
-            a tuple containing the trained model and the History object from training
-            that model
+            trained keras model object
         """
 
         # if no hyperparameters are set, set the defaults, otherwise extract them
@@ -167,8 +197,8 @@ class CnnModel:
         # determine the appropriate callbacks, depending on if fast is true or false
         assert isinstance(self.X_train, pd.DataFrame)
         assert isinstance(self.X_dev, pd.DataFrame)
-        assert isinstance(self.y_train, pd.DataFrame)
-        assert isinstance(self.y_dev, pd.DataFrame)
+        assert isinstance(self.y_train, pd.Series)
+        assert isinstance(self.y_dev, pd.Series)
 
         if not self.fast:
             callbacks = [
@@ -195,7 +225,7 @@ class CnnModel:
         # call build_cnn and train model, output trained model
         cnn_model = self.build_cnn(self.X_train.shape, self.y_train.max() + 1)
 
-        cnn_hist = cnn_model.fit(
+        cnn_model.fit(
             self.X_train,
             self.y_train,
             batch_size=self.batch_size,
@@ -206,18 +236,16 @@ class CnnModel:
 
         return cnn_model
 
-    # TODO: update method name and references
-    # TODO: conform parameter names to snake casing except when represents a matrix
-    def layer_CBnAP(self, X_in, nfilters, size_C, s_C, size_P, lnum):
+    def layer_cbnap(self, X_in, nfilters, size_c, s_c, size_p, lnum):
         """Defines one set of convolutional layers with a Convolution,
         BatchNormalization, LeakyReLU activation, and MaxPooling1D
 
         Args:
           X_in: input matrix for the layers
           nfilters: number of filters for the convolutional layer
-          size_C: size of the convolutional kernel
-          s_C: step size for the convolution layer
-          size_P: size for MaxPooling layer
+          size_c: size of the convolutional kernel
+          s_c: step size for the convolution layer
+          size_p: size for MaxPooling layer
           lnum: layer number used for debugging
 
         Returns:
@@ -225,23 +253,20 @@ class CnnModel:
         """
 
         # CONV -> BN -> RELU -> MaxPooling Block applied to X
-        X_working = Conv1D(nfilters, size_C, s_C, name="conv" + lnum)(X_in)
+        X_working = Conv1D(nfilters, size_c, s_c, name="conv" + lnum)(X_in)
         X_working = BatchNormalization(name="bn" + lnum)(X_working)
         X_working = LeakyReLU(
             alpha=config[self.mod_sel]["lrlu_alpha"], name="relu" + lnum
         )(X_working)
-        X_working = MaxPooling1D(size_P, name="mpool" + lnum)(X_working)
+        X_working = MaxPooling1D(size_p, name="mpool" + lnum)(X_working)
         return X_working
 
-    # TODO: conform variables to snake case except when represents a matrix
     def build_cnn(self, X_shape, y_shape):
         """Defines and builds the CNN model with the given inputs
 
         Args:
           X_shape: the shape of the data for the model
           y_shape: the shape of the labels for the model
-          lr: learning rate, default 0.001
-          drop: drop rate, default 0.55
 
         Returns:
           a compiled model as defined by this method
@@ -253,24 +278,24 @@ class CnnModel:
 
         # first layer - conv, batch normalization, activation, pooling
         nfilters = config[self.mod_sel]["layer_1"]["nfilters"]
-        size_C = config[self.mod_sel]["layer_1"]["conv_size"]
-        s_C = config[self.mod_sel]["layer_1"]["conv_step"]
-        size_P = config[self.mod_sel]["layer_1"]["pool_size"]
-        X = self.layer_CBnAP(X_input, nfilters, size_C, s_C, size_P, "1")
+        size_c = config[self.mod_sel]["layer_1"]["conv_size"]
+        s_c = config[self.mod_sel]["layer_1"]["conv_step"]
+        size_p = config[self.mod_sel]["layer_1"]["pool_size"]
+        X = self.layer_cbnap(X_input, nfilters, size_c, s_c, size_p, "1")
 
         # second layer - conv, batch normalization, activation, pooling
         nfilters = config[self.mod_sel]["layer_2"]["nfilters"]
-        size_C = config[self.mod_sel]["layer_2"]["conv_size"]
-        s_C = config[self.mod_sel]["layer_2"]["conv_step"]
-        size_P = config[self.mod_sel]["layer_2"]["pool_size"]
-        X = self.layer_CBnAP(X, nfilters, size_C, s_C, size_P, "2")
+        size_c = config[self.mod_sel]["layer_2"]["conv_size"]
+        s_c = config[self.mod_sel]["layer_2"]["conv_step"]
+        size_p = config[self.mod_sel]["layer_2"]["pool_size"]
+        X = self.layer_cbnap(X, nfilters, size_c, s_c, size_p, "2")
 
         # third layer - conv, batch normalization, activation, pooling
         nfilters = config[self.mod_sel]["layer_3"]["nfilters"]
-        size_C = config[self.mod_sel]["layer_3"]["conv_size"]
-        s_C = config[self.mod_sel]["layer_3"]["conv_step"]
-        size_P = config[self.mod_sel]["layer_3"]["pool_size"]
-        X = self.layer_CBnAP(X, nfilters, size_C, s_C, size_P, "3")
+        size_c = config[self.mod_sel]["layer_3"]["conv_size"]
+        s_c = config[self.mod_sel]["layer_3"]["conv_step"]
+        size_p = config[self.mod_sel]["layer_3"]["pool_size"]
+        X = self.layer_cbnap(X, nfilters, size_c, s_c, size_p, "3")
 
         # flatten for final layers
         X = Flatten()(X)
@@ -300,25 +325,12 @@ class CnnModel:
         )
         return model
 
-    def raw_cnn_model(self):
+    def cnn_model(self):
         """calls methods to build and train a model as well as testing against the
         validation sets
 
         Args:
-          fin_path: file path for pulling in data
-          mout_path: file path for saving model data
-          dev_size: size of the dev set as a percentage between 0 and 1 inclusive.
-            Default 0.2
-          r_state: random seed value. Default 1
-          hyperparameters: an array of hyperparameters in the order: learning
-            rate (lr) (default 0.0001), batch size (default 100), dropout rate (drop))
-            (default 0.55), epochs (default 10)
-          fast: boolean. if true, then the model runs more than twice as fast but does
-            not record predictions of every sample for every epoch. If False, runs
-            much more slowly but creates a csv of probability weights for every sample
-            at every epoch for both the training and validation sets
-          id_val: string that is prepended to all output files for tracking
-          threshold: decision threshold for labeling
+          None
 
         Returns:
           CNN model built with raw data inputs
@@ -329,7 +341,7 @@ class CnnModel:
 
         # test cnn model with dev set
         self.test = TestModel(
-            self.model,
+            self. model,
             self.mod_sel,
             self.fout_path,
             self.X_dev,
@@ -337,6 +349,7 @@ class CnnModel:
             self.id_val,
             threshold=self.threshold,
             fast=self.fast,
+            test=False
         )
 
         # save model
@@ -347,8 +360,7 @@ class CnnModel:
         """saves model data to the given output mout_path
 
         Args:
-          model: the model history file
-          mout_path: the filepath to store the model dataframe
+          None
 
         Returns:
           None. Creates a file at the given filepath
@@ -359,8 +371,38 @@ class CnnModel:
 
 
 class TestModel:
+    """
+    Testing object for machine learning models. Can be used to build confusion 
+        matrix and generate ROC plots
+
+    Attributes:
+        model: keras or scikit-learn model object
+        mod_sel: string name of model, used for configuration. Current 
+            options: "cnn_raw"
+        X_test: ndarray-like object of test set features
+        y_test: array-like object of test set labels, must be same lengh as X_test
+        id_val: string prepended to output file names
+        threshold: float decision threshold for positive identification
+        fast: bool supresses output files for quick testing if true
+        test: bool identifies output files as test files if true, validation if 
+            false
+        batch_size: batch size for model prediction
+        fout_path: string filepath for output files
+        y_pred: array-like object of model predictions for X_test
+        y_dec_pred: array-like object of model predictions with decision 
+            threshold applied
+    """
     def __init__(
-        self, model, mod_sel, fout_path, X_test, y_test, id_val, threshold, fast
+        self, 
+        model, 
+        mod_sel, 
+        fout_path, 
+        X_test, 
+        y_test, 
+        id_val, 
+        threshold, 
+        fast, 
+        test
     ):
         self.model = model
         self.mod_sel = mod_sel
@@ -369,21 +411,25 @@ class TestModel:
         self.id_val = id_val
         self.threshold = threshold
         self.fast = fast
+        self.test = test
         self.batch_size = config[self.mod_sel]["test_batch"]
         self.fout_path = fout_path
 
         self.y_pred = self.run_pred()
         self.y_dec_pred = self.dec_pred()
-        self.test_cnn_model(False)
+        self.test_cnn_model()
 
-    def run_pred(self, batch_size=None):
-        if batch_size:
-            self.batch_size = batch_size
+    def run_pred(self):
+        # todo: docstring
+        """
+        """
+
         # predict classes for provided test set
         self.y_pred = self.model.predict(self.X_test, batch_size=self.batch_size)
         return self.y_pred
 
-    def test_cnn_model(self, test=True, threshold=None, fast=None):
+    def test_cnn_model(self):
+        # todo: docstring update
         """
         test a trained model with given parameters, creates a csv of confusion matrix
         at Model Data/CNN Model/ 'id_val'+comfmatout.csv
@@ -398,11 +444,6 @@ class TestModel:
         Returns:
           None; creates a file at the /Model Data/CNN Model/Raw/ folder
         """
-        if threshold:
-            self.threshold = threshold
-
-        if fast:
-            self.fast = fast
 
         # report confusion matrix
         confmat = self.build_confmat()
@@ -410,8 +451,8 @@ class TestModel:
         display(confmat)
 
         # if fast is not True, save the confusion matrix as either test or validation
-        if not fast:
-            if test:
+        if not self.fast:
+            if self.test:
                 file_n = self.id_val + "_test"
             else:
                 file_n = self.id_val + "_validation"
@@ -425,6 +466,7 @@ class TestModel:
             ).to_csv(confmatout_path + "_probs.csv")
 
     def dec_pred(self):
+        # todo: docstring update
         """takes prediction weights and applies a decision threshold to deterime the
         predicted class for each sample
 
@@ -439,14 +481,15 @@ class TestModel:
         probs_ls = np.amax(self.y_pred, axis=1)
         class_ls = np.argmax(self.y_pred, axis=1)
         pred_lab = np.zeros(len(self.y_pred))
-        for i in range(len(probs_ls)):
-            if probs_ls[i] > self.threshold:
+        for i, ele in enumerate(probs_ls):
+            if ele > self.threshold:
                 pred_lab[i] = class_ls[i]
             else:
                 pred_lab[i] = 15
         return pred_lab
 
     def build_confmat(self):
+        # todo: docstring update
         """builds the confusion matrix with labeled axes
 
         Args:
@@ -465,6 +508,69 @@ class TestModel:
 
         return pd.DataFrame(
             confusion_matrix(self.y_test, self.y_dec_pred, labels=mat_labels),
-            index=["true_{0}".format(i) for i in mat_labels],
-            columns=["pred_{0}".format(i) for i in mat_labels],
+            index=[f"true_{i}" for i in mat_labels],
+            columns=[f"pred_{i}" for i in mat_labels],
         )
+    
+    def plot_roc(X_df,i):
+      # todo method update to class method
+      # todo docstring update
+      """plots the receiver operating characteristic curve for the data in X_df with
+      true binary labels in the final column
+
+      Args:
+        X_df: DataFrame with the target class probability in the column ['i']
+        i: target integer label, eg use 0 to get an ROC curve for Quartz
+
+      Returns:
+        a tuple of arrays, the arrays of tpr, fpr, and threshold values
+
+      Notes:
+        The Reciever Operator Characteristic (ROC) curve is built by plotting x,y at
+        various binary discrimination thresholds where x=true positive rate(tpr) and
+        y=false positive rate(fpr)
+
+        tpr=True positive/(True Positive + False Negative)
+        fpr=False positive/(False Positive + True Negative)
+      """
+      #get tpr, fpr, and threshold lists
+      try:
+        from sklearn.metrics import roc_curve
+        fpr_p,tpr_p,thresh=roc_curve(X_df['label'],X_df[i],i)
+      except:
+        return None
+
+      #plot the roc curves
+      from matplotlib import pyplot as plt
+      plt.plot(fpr_p,tpr_p)
+      plt.plot([0,1],[0,1],color='green')
+      plt.title('ROC Curve for Class '+str(i))
+      plt.show()
+
+      return tpr_p,fpr_p,thresh
+
+    def roc_all(outputs,labels):
+        # todo: method update to class method
+        # todo: docstring update
+        """creates ROC curves for each class in the output of a classifier
+
+        Args:
+          outputs: DataFrame or ndarray of output probabilities for each class
+          labels: an array or series of true labels for the samples in X
+
+        Returns:
+          None
+        """
+        master_df=pd.DataFrame(outputs)
+        roc_d={}
+        master_df['label']=labels.values
+        for i in range(labels.max()+1):
+          if len(master_df.loc[master_df['label']==i])==0:
+            continue
+          roc_d[i]=plot_roc(master_df,i)
+
+        return pd.DataFrame(roc_d,index=['tpr','fpr','thresh'])
+    
+    def ouput_classification_report(self):
+        
+
