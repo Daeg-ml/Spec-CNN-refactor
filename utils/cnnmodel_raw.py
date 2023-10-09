@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # TODO: update all docstrings
+# TODO: rename file to more generic name and update imports
 """
 Contains methods that define the CNN model
 """
@@ -55,7 +56,7 @@ class PredictionCallback(tf.keras.callbacks.Callback):
         self.val = val
         self.path = fout_path
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs={}):  # pylint: disable=dangerous-default-value
         """
         Callback method to generate logs on epoch end
         """
@@ -320,7 +321,7 @@ class CnnModel:
         model.summary()
         model.compile(
             loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-            optimizer=opt,
+            optimizer=opt,  # type: ignore
             metrics=config[self.mod_sel]["metrics"],
         )
         return model
@@ -341,7 +342,7 @@ class CnnModel:
 
         # test cnn model with dev set
         self.test = TestModel(
-            self. model,
+            self.model,
             self.mod_sel,
             self.fout_path,
             self.X_dev,
@@ -349,7 +350,7 @@ class CnnModel:
             self.id_val,
             threshold=self.threshold,
             fast=self.fast,
-            test=False
+            test=False,
         )
 
         # save model
@@ -370,39 +371,32 @@ class CnnModel:
         print("model saved")
 
 
+# TODO: move the testmodel class to a separate file
 class TestModel:
     """
-    Testing object for machine learning models. Can be used to build confusion 
+    Testing object for machine learning models. Can be used to build confusion
         matrix and generate ROC plots
 
     Attributes:
         model: keras or scikit-learn model object
-        mod_sel: string name of model, used for configuration. Current 
+        mod_sel: string name of model, used for configuration. Current
             options: "cnn_raw"
         X_test: ndarray-like object of test set features
         y_test: array-like object of test set labels, must be same lengh as X_test
         id_val: string prepended to output file names
         threshold: float decision threshold for positive identification
         fast: bool supresses output files for quick testing if true
-        test: bool identifies output files as test files if true, validation if 
+        test: bool identifies output files as test files if true, validation if
             false
         batch_size: batch size for model prediction
         fout_path: string filepath for output files
         y_pred: array-like object of model predictions for X_test
-        y_dec_pred: array-like object of model predictions with decision 
+        y_dec_pred: array-like object of model predictions with decision
             threshold applied
     """
+
     def __init__(
-        self, 
-        model, 
-        mod_sel, 
-        fout_path, 
-        X_test, 
-        y_test, 
-        id_val, 
-        threshold, 
-        fast, 
-        test
+        self, model, mod_sel, fout_path, X_test, y_test, id_val, threshold, fast, test
     ):
         self.model = model
         self.mod_sel = mod_sel
@@ -421,8 +415,7 @@ class TestModel:
 
     def run_pred(self):
         # todo: docstring
-        """
-        """
+        """ """
 
         # predict classes for provided test set
         self.y_pred = self.model.predict(self.X_test, batch_size=self.batch_size)
@@ -511,45 +504,47 @@ class TestModel:
             index=[f"true_{i}" for i in mat_labels],
             columns=[f"pred_{i}" for i in mat_labels],
         )
-    
-    def plot_roc(X_df,i):
-      # todo method update to class method
-      # todo docstring update
-      """plots the receiver operating characteristic curve for the data in X_df with
-      true binary labels in the final column
 
-      Args:
-        X_df: DataFrame with the target class probability in the column ['i']
-        i: target integer label, eg use 0 to get an ROC curve for Quartz
+    def plot_roc(X_df, i):
+        # todo method update to class method
+        # todo docstring update
+        """plots the receiver operating characteristic curve for the data in X_df with
+        true binary labels in the final column
 
-      Returns:
-        a tuple of arrays, the arrays of tpr, fpr, and threshold values
+        Args:
+          X_df: DataFrame with the target class probability in the column ['i']
+          i: target integer label, eg use 0 to get an ROC curve for Quartz
 
-      Notes:
-        The Reciever Operator Characteristic (ROC) curve is built by plotting x,y at
-        various binary discrimination thresholds where x=true positive rate(tpr) and
-        y=false positive rate(fpr)
+        Returns:
+          a tuple of arrays, the arrays of tpr, fpr, and threshold values
 
-        tpr=True positive/(True Positive + False Negative)
-        fpr=False positive/(False Positive + True Negative)
-      """
-      #get tpr, fpr, and threshold lists
-      try:
-        from sklearn.metrics import roc_curve
-        fpr_p,tpr_p,thresh=roc_curve(X_df['label'],X_df[i],i)
-      except:
-        return None
+        Notes:
+          The Reciever Operator Characteristic (ROC) curve is built by plotting x,y at
+          various binary discrimination thresholds where x=true positive rate(tpr) and
+          y=false positive rate(fpr)
 
-      #plot the roc curves
-      from matplotlib import pyplot as plt
-      plt.plot(fpr_p,tpr_p)
-      plt.plot([0,1],[0,1],color='green')
-      plt.title('ROC Curve for Class '+str(i))
-      plt.show()
+          tpr=True positive/(True Positive + False Negative)
+          fpr=False positive/(False Positive + True Negative)
+        """
+        # get tpr, fpr, and threshold lists
+        try:
+            from sklearn.metrics import roc_curve
 
-      return tpr_p,fpr_p,thresh
+            fpr_p, tpr_p, thresh = roc_curve(X_df["label"], X_df[i], i)
+        except:
+            return None
 
-    def roc_all(outputs,labels):
+        # plot the roc curves
+        from matplotlib import pyplot as plt
+
+        plt.plot(fpr_p, tpr_p)
+        plt.plot([0, 1], [0, 1], color="green")
+        plt.title("ROC Curve for Class " + str(i))
+        plt.show()
+
+        return tpr_p, fpr_p, thresh
+
+    def roc_all(outputs, labels):
         # todo: method update to class method
         # todo: docstring update
         """creates ROC curves for each class in the output of a classifier
@@ -561,16 +556,14 @@ class TestModel:
         Returns:
           None
         """
-        master_df=pd.DataFrame(outputs)
-        roc_d={}
-        master_df['label']=labels.values
-        for i in range(labels.max()+1):
-          if len(master_df.loc[master_df['label']==i])==0:
-            continue
-          roc_d[i]=plot_roc(master_df,i)
+        master_df = pd.DataFrame(outputs)
+        roc_d = {}
+        master_df["label"] = labels.values
+        for i in range(labels.max() + 1):
+            if len(master_df.loc[master_df["label"] == i]) == 0:
+                continue
+            roc_d[i] = plot_roc(master_df, i)
 
-        return pd.DataFrame(roc_d,index=['tpr','fpr','thresh'])
-    
-    def ouput_classification_report(self):
-        
+        return pd.DataFrame(roc_d, index=["tpr", "fpr", "thresh"])
 
+    # def ouput_classification_report(self):
