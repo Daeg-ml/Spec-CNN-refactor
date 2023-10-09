@@ -5,6 +5,7 @@ Contains the class used for testing ML models
 """
 import yaml
 from IPython.display import display
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix, roc_curve
@@ -36,6 +37,8 @@ class TestModel:
         y_dec_pred: array-like object of model predictions with decision
             threshold applied
     """
+    # ignore linter for matrix naming conventions
+    # pylint: disable=invalid-name
 
     # TODO: handle rarely changed options fast, test, and threshold as kwargs
     def __init__(
@@ -61,7 +64,8 @@ class TestModel:
         """ """
 
         # predict classes for provided test set
-        self.y_pred = self.model.predict(self.X_test, batch_size=self.batch_size)
+        self.y_pred = self.model.predict(
+            self.X_test, batch_size=self.batch_size)
         return self.y_pred
 
     def test_cnn_model(self):
@@ -140,7 +144,8 @@ class TestModel:
         print("y_pred=", self.y_pred)
         print("y_dec_pred=", self.y_dec_pred, "\n\n\ny_label=", self.y_test)
 
-        mat_labels = range(max([max(self.y_test), int(max(self.y_dec_pred))]) + 1)
+        mat_labels = range(
+            max([max(self.y_test), int(max(self.y_dec_pred))]) + 1)
 
         return pd.DataFrame(
             confusion_matrix(self.y_test, self.y_dec_pred, labels=mat_labels),
@@ -149,8 +154,7 @@ class TestModel:
         )
 
     def plot_roc(self, X_df, i):
-        # todo method update to class method
-        # todo docstring update
+        # TODO: docstring update
         """plots the receiver operating characteristic curve for the data in X_df with
         true binary labels in the final column
 
@@ -171,12 +175,12 @@ class TestModel:
         """
         # get tpr, fpr, and threshold lists
         try:
-            fpr_p, tpr_p, thresh = roc_curve(X_df["label"], X_df[i], pos_label=i)
+            fpr_p, tpr_p, thresh = roc_curve(
+                X_df["label"], X_df[i], pos_label=i)
         except:
             return None
 
         # plot the roc curves
-        from matplotlib import pyplot as plt
 
         plt.plot(fpr_p, tpr_p)
         plt.plot([0, 1], [0, 1], color="green")
@@ -186,7 +190,6 @@ class TestModel:
         return tpr_p, fpr_p, thresh
 
     def roc_all(self, outputs, labels):
-        # todo: method update to class method
         # todo: docstring update
         """creates ROC curves for each class in the output of a classifier
 
