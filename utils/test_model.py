@@ -3,12 +3,16 @@
 """
 Contains the class used for testing ML models
 """
+import yaml
 from IPython.display import display
 import numpy as np
+import pandas as pd
 from sklearn.metrics import confusion_matrix
 
+with open("utils/config.yml", encoding="utf-8") as file:
+    config = yaml.safe_load(file)
 
-# TODO: move the testmodel class to a separate file
+
 class TestModel:
     """
     Testing object for machine learning models. Can be used to build confusion
@@ -18,6 +22,7 @@ class TestModel:
         model: keras or scikit-learn model object
         mod_sel: string name of model, used for configuration. Current
             options: "cnn_raw"
+        fout_path: string filepath for output files
         X_test: ndarray-like object of test set features
         y_test: array-like object of test set labels, must be same lengh as X_test
         id_val: string prepended to output file names
@@ -26,7 +31,7 @@ class TestModel:
         test: bool identifies output files as test files if true, validation if
             false
         batch_size: batch size for model prediction
-        fout_path: string filepath for output files
+
         y_pred: array-like object of model predictions for X_test
         y_dec_pred: array-like object of model predictions with decision
             threshold applied
@@ -142,7 +147,7 @@ class TestModel:
             columns=[f"pred_{i}" for i in mat_labels],
         )
 
-    def plot_roc(X_df, i):
+    def plot_roc(self, X_df, i):
         # todo method update to class method
         # todo docstring update
         """plots the receiver operating characteristic curve for the data in X_df with
@@ -181,7 +186,7 @@ class TestModel:
 
         return tpr_p, fpr_p, thresh
 
-    def roc_all(outputs, labels):
+    def roc_all(self, outputs, labels):
         # todo: method update to class method
         # todo: docstring update
         """creates ROC curves for each class in the output of a classifier
