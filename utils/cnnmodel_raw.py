@@ -21,6 +21,7 @@ from tensorflow.keras.layers import MaxPooling1D, Dropout
 from tensorflow.keras.models import Model
 
 import utils.helper as h
+from utils.test_model import TestModel
 
 with open("utils/config.yml", encoding="utf-8") as file:
     config = yaml.safe_load(file)
