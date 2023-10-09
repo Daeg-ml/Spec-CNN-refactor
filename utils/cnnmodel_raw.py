@@ -105,6 +105,8 @@ class CnnModel:
         test: testmodel class object. Not instantiated until self.cnn_model
             is called
     """
+    # ignore linter for matrix naming conventions
+    # pylint: disable=invalid-name
 
     def __init__(
         self,
@@ -139,8 +141,10 @@ class CnnModel:
         self.batch_size = hyperparameters.get(
             "batch_size", config[self.mod_sel]["batch_size"]
         )
-        self.drop_rate = hyperparameters.get("drop_rate", config[self.mod_sel]["drop"])
-        self.epochs = hyperparameters.get("epochs", config[self.mod_sel]["epochs"])
+        self.drop_rate = hyperparameters.get(
+            "drop_rate", config[self.mod_sel]["drop"])
+        self.epochs = hyperparameters.get(
+            "epochs", config[self.mod_sel]["epochs"])
 
         self.lrlu_alpha = config[self.mod_sel]["lrlu_alpha"]
         self.metrics = [config[self.mod_sel]["metrics"]]
@@ -161,8 +165,40 @@ class CnnModel:
         )
 
         self.model: Model
-        self.test: TestModel
+        self.testmodel: TestModel
 
+    def cnn_model(self):
+        """calls methods to build and train a model as well as testing against the
+        validation sets
+
+        Args:
+          None
+
+        Returns:
+          CNN model built with raw data inputs
+        """
+
+        # train a cnn model
+        self.model = self.train_cnn_model()
+
+        # test cnn model with dev set
+        self.testmodel = TestModel(
+            self.model,
+            self.mod_sel,
+            self.fout_path,
+            self.X_dev,
+            self.y_dev,
+            self.id_val,
+            threshold=self.threshold,
+            fast=self.fast,
+            test=False,
+        )
+
+        # save model
+        if not self.fast:
+            self.save_model()
+
+    # TODO: handle hyperparameters as kwargs
     def train_cnn_model(self, hyperparameters=None):
         """
         Trains a CNN model using the predetermined architecture and returns the model
@@ -191,12 +227,13 @@ class CnnModel:
         min_delta = config[self.mod_sel]["min_delta"]
         patience = config[self.mod_sel]["patience"]
 
-        # determine the appropriate callbacks, depending on if fast is true or false
+        # ensure typing is correct for linter
         assert isinstance(self.X_train, pd.DataFrame)
         assert isinstance(self.X_dev, pd.DataFrame)
         assert isinstance(self.y_train, pd.Series)
         assert isinstance(self.y_dev, pd.Series)
 
+        # determine the appropriate callbacks, depending on if fast is true or false
         if not self.fast:
             callbacks = [
                 PredictionCallback(
@@ -321,37 +358,6 @@ class CnnModel:
             metrics=config[self.mod_sel]["metrics"],
         )
         return model
-
-    def cnn_model(self):
-        """calls methods to build and train a model as well as testing against the
-        validation sets
-
-        Args:
-          None
-
-        Returns:
-          CNN model built with raw data inputs
-        """
-
-        # train a cnn model
-        self.model = self.train_cnn_model()
-
-        # test cnn model with dev set
-        self.test = TestModel(
-            self.model,
-            self.mod_sel,
-            self.fout_path,
-            self.X_dev,
-            self.y_dev,
-            self.id_val,
-            threshold=self.threshold,
-            fast=self.fast,
-            test=False,
-        )
-
-        # save model
-        if not self.fast:
-            self.save_model()
 
     def save_model(self):
         """saves model data to the given output mout_path
