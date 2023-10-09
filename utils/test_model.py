@@ -7,7 +7,7 @@ import yaml
 from IPython.display import display
 import numpy as np
 import pandas as pd
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_curve
 
 with open("utils/config.yml", encoding="utf-8") as file:
     config = yaml.safe_load(file)
@@ -37,6 +37,7 @@ class TestModel:
             threshold applied
     """
 
+    # TODO: handle rarely changed options fast, test, and threshold as kwargs
     def __init__(
         self, model, mod_sel, fout_path, X_test, y_test, id_val, threshold, fast, test
     ):
@@ -170,9 +171,7 @@ class TestModel:
         """
         # get tpr, fpr, and threshold lists
         try:
-            from sklearn.metrics import roc_curve
-
-            fpr_p, tpr_p, thresh = roc_curve(X_df["label"], X_df[i], i)
+            fpr_p, tpr_p, thresh = roc_curve(X_df["label"], X_df[i], pos_label=i)
         except:
             return None
 
@@ -204,8 +203,6 @@ class TestModel:
         for i in range(labels.max() + 1):
             if len(master_df.loc[master_df["label"] == i]) == 0:
                 continue
-            roc_d[i] = plot_roc(master_df, i)
+            roc_d[i] = self.plot_roc(master_df, i)
 
         return pd.DataFrame(roc_d, index=["tpr", "fpr", "thresh"])
-
-    # def ouput_classification_report(self):
